@@ -20,10 +20,11 @@ dependencies {
 }
 
 tasks.jar {
-  archiveFileName = "image-converter.jar"
-  manifest {
-    attributes["Main-Class"] = "com.redja.Main"
-  }
+    archiveFileName = "image-converter.jar"
+    destinationDirectory = file(projectDir)
+    manifest {
+        attributes["Main-Class"] = "com.redja.Main"
+    }
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
