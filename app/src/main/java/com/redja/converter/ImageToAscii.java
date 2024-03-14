@@ -1,9 +1,9 @@
 package com.redja.converter;
 
 import javax.imageio.ImageIO;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,21 +11,27 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 
-import static java.util.Objects.requireNonNull;
-
 public class ImageToAscii {
     private static final String ASCII_CHARS = "`^\",:;Il!i~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
     private static final String IMAGE_EXT_JPG = "jpg";
     private static final String IMAGE_EXT_JPEG = "jpeg";
     private static final String IMAGE_EXT_PNG = "png";
     private static final String IMAGE_EXT_GIF = "gif";
+    private static final int DEFAULT_WIDTH = 200;
+    private static final int DEFAULT_HEIGHT = 150;
 
-    private String imageFullPath;
+    private final String imageFullPath;
     private String imageOutputPath;
 
+    public ImageToAscii(String imageFullPath, String imageOutputPath) {
+        this.imageFullPath = imageFullPath;
+        this.imageOutputPath = imageOutputPath;
+    }
+
     public void start() throws IOException {
+        Path path = Paths.get(imageFullPath);
         if (imageOutputPath == null || imageOutputPath.isBlank()) {
-            imageOutputPath = "ascii" + Instant.now().getEpochSecond() + ".txt";
+            imageOutputPath = path.getFileName().toString() + "-" + Instant.now().getEpochSecond() + ".txt";
         }
 
         final BufferedImage bufferedImage = getImage();
@@ -35,17 +41,16 @@ public class ImageToAscii {
         int height = bufferedImage.getHeight();
         int width = bufferedImage.getWidth();
 
-        int scale = 10;
-        int newWidth = width / scale;
-        int newHeight = height / scale;
-        BufferedImage resizedImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
-        resizedImage.getGraphics().drawImage(bufferedImage, 0, 0, newWidth, newHeight, null);
+        int scale = 8;
+        BufferedImage resizedImage = resize(bufferedImage, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        int newHeight = resizedImage.getHeight();
+        int newWidth = resizedImage.getWidth();
 
 
-        for (int i=0; i<newHeight; i++) {
+        for (int i = 0; i < newHeight; i++) {
             StringBuilder line = new StringBuilder();
-            for (int j=0; j<newWidth; j++) {
-                int rgb = resizedImage.getRGB(j,i);
+            for (int j = 0; j < newWidth; j++) {
+                int rgb = resizedImage.getRGB(j, i);
                 int brightness = calculateBrightness(rgb);
                 int asciiIndex = (int) ((ASCII_CHARS.length() - 1) * (brightness / 255.0));
                 char asciiValue = ASCII_CHARS.charAt(asciiIndex);
@@ -58,13 +63,9 @@ public class ImageToAscii {
         }
     }
 
-    public ImageToAscii(String imageFullPath, String imageOutputPath) {
-        this.imageFullPath = imageFullPath;
-        this.imageOutputPath = imageOutputPath;
-    }
-
     /**
      * Checks that a given file is a supported type
+     *
      * @param path the Path object to the file
      * @return whether the file is a supported type
      */
@@ -80,6 +81,7 @@ public class ImageToAscii {
 
     /**
      * Returns the average of the given RGB value
+     *
      * @param rgb The integer-value for the pixel
      * @return The average of the given rgb value
      */
@@ -93,6 +95,7 @@ public class ImageToAscii {
 
     /**
      * Get the buffered image found at `imagePath`
+     *
      * @return a BufferedImage object
      */
     private BufferedImage getImage() {
@@ -111,5 +114,31 @@ public class ImageToAscii {
             e.printStackTrace();
             return null;
         }
+    }
+
+    /**
+     * Takes the original image and uses bi-linear interpolation to maintain image quality while re-sizing
+     *
+     * @param original     The original BufferedImage
+     * @param targetWidth  The required width
+     * @param targetHeight The required height
+     * @return The re-sized BufferedImage
+     */
+    private BufferedImage resize(BufferedImage original, int targetWidth, int targetHeight) {
+        double aspectRatio = (double) original.getWidth() / original.getHeight();
+
+        // Calculate new dimensions based on aspect ratio
+        if (aspectRatio > 1) {
+            targetHeight = (int) (targetWidth / aspectRatio);
+        } else {
+            targetWidth = (int) (targetHeight * aspectRatio);
+        }
+
+        BufferedImage resizedImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics2D = resizedImage.createGraphics();
+        graphics2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        graphics2D.drawImage(original, 0, 0, targetWidth, targetHeight, null);
+        graphics2D.dispose();
+        return resizedImage;
     }
 }
