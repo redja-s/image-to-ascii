@@ -1,5 +1,3 @@
-package com.redja.converter;
-
 import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -17,11 +15,24 @@ public class ImageToAscii {
     private static final String IMAGE_EXT_JPEG = "jpeg";
     private static final String IMAGE_EXT_PNG = "png";
     private static final String IMAGE_EXT_GIF = "gif";
-    private static final int DEFAULT_WIDTH = 200;
+    private static final int DEFAULT_WIDTH = 150;
     private static final int DEFAULT_HEIGHT = 150;
 
     private final String imageFullPath;
     private String imageOutputPath;
+
+    public static void main(String[] args) throws IOException {
+        ImageToAscii imageToAscii;
+        if (args.length == 0) {
+            throw new RuntimeException("Please provide a file");
+        } else if (args.length == 1) {
+            imageToAscii = new ImageToAscii(args[0], null);
+        } else {
+            imageToAscii = new ImageToAscii(args[0], args[1]);
+        }
+
+        imageToAscii.start();
+    }
 
     public ImageToAscii(String imageFullPath, String imageOutputPath) {
         this.imageFullPath = imageFullPath;
@@ -31,21 +42,18 @@ public class ImageToAscii {
     public void start() throws IOException {
         Path path = Paths.get(imageFullPath);
         if (imageOutputPath == null || imageOutputPath.isBlank()) {
-            imageOutputPath = path.getFileName().toString() + "-" + Instant.now().getEpochSecond() + ".txt";
+            int dotIndex = path.getFileName().toString().lastIndexOf(".");
+            imageOutputPath = "output/" + path.getFileName().toString().substring(0, dotIndex) + "-" + Instant.now().getEpochSecond() + ".txt";
+            System.out.println("No output path found. Outputting to " + imageOutputPath);
         }
 
         final BufferedImage bufferedImage = getImage();
         final Path output = Paths.get(imageOutputPath);
         Files.createFile(output);
 
-        int height = bufferedImage.getHeight();
-        int width = bufferedImage.getWidth();
-
-        int scale = 8;
         BufferedImage resizedImage = resize(bufferedImage, DEFAULT_WIDTH, DEFAULT_HEIGHT);
         int newHeight = resizedImage.getHeight();
         int newWidth = resizedImage.getWidth();
-
 
         for (int i = 0; i < newHeight; i++) {
             StringBuilder line = new StringBuilder();
@@ -65,7 +73,6 @@ public class ImageToAscii {
 
     /**
      * Checks that a given file is a supported type
-     *
      * @param path the Path object to the file
      * @return whether the file is a supported type
      */
@@ -81,7 +88,6 @@ public class ImageToAscii {
 
     /**
      * Returns the average of the given RGB value
-     *
      * @param rgb The integer-value for the pixel
      * @return The average of the given rgb value
      */
@@ -95,7 +101,6 @@ public class ImageToAscii {
 
     /**
      * Get the buffered image found at `imagePath`
-     *
      * @return a BufferedImage object
      */
     private BufferedImage getImage() {
@@ -118,7 +123,6 @@ public class ImageToAscii {
 
     /**
      * Takes the original image and uses bi-linear interpolation to maintain image quality while re-sizing
-     *
      * @param original     The original BufferedImage
      * @param targetWidth  The required width
      * @param targetHeight The required height
